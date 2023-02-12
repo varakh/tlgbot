@@ -1,7 +1,7 @@
 # Telegram bot для OpenWRT
 
-[![ru](https://img.shields.io/badge/lang-ru-red.svg)](https://github.com/varakh/multilanguage-readme-pattern/blob/master/README.md)
-[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/varakh/multilanguage-readme-pattern/blob/master/README.md)
+[![ru](https://img.shields.io/badge/lang-ru-red.svg)](https://github.com/varakh/tlgbot/blob/main/README.md)
+[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/varakh/tlgbot/blob/main/README.en.md)
 
 Бот для Telegram, представляющий собой набор скриптов, написанных на Bash, для использования на устройствах с OpenWRT.
 В основе лежат скрипты из других похожих проектов, авторам которых выражаю благодарность:
