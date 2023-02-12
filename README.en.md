@@ -1,7 +1,7 @@
 # Telegram bot for OpenWRT
 
-[![ru](https://img.shields.io/badge/lang-ru-red.svg)](https://github.com/varakh/multilanguage-readme-pattern/blob/master/README.md)
-[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/varakh/multilanguage-readme-pattern/blob/master/README.md)
+[![ru](https://img.shields.io/badge/lang-ru-red.svg)](https://github.com/varakh/tlgbot/blob/main/README.md)
+[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/varakh/tlgbot/blob/main/README.en.md)
 
 > **Main language of bot's messages is Russian**
 
