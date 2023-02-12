@@ -1,0 +1,8 @@
+config tlgbot 'config'
+	option polling_period '1'
+	option offset_file '/tmp/tlg_offset'
+
+config tlgbot 'api'
+	option url 'https://api.telegram.org/bot'
+	option token ''
+	option chat_id ''

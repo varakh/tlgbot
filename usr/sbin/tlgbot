@@ -1,0 +1,116 @@
+#!/bin/sh
+PATH='/usr/bin:/usr/sbin:/bin:/sbin'
+
+offset_file=$(uci get tlgbot.config.offset_file)
+polling_period=$(uci get tlgbot.config.polling_period)
+
+token=$(uci get tlgbot.api.token)
+chat_id=$(uci get tlgbot.api.chat_id)
+api=$(uci get tlgbot.api.url)$token
+
+scripts="/usr/bin/tlgbot"
+telegram_log_file=/dev/null
+
+if [ -z "$token" ]; then
+	echo "Не указан токен"
+	exit 2
+fi
+
+if [ -z "$chat_id" ]; then
+	echo "Не указан ID чата"
+	exit 2
+fi
+
+if [ -z "$polling_period" ]; then
+	polling_period=1
+fi
+
+command_not_found="Похоже, на эльфийском. Я не могу прочесть"
+## \_ для экранирования, чтобы Markdown не изменял текст на курсив, полужирный и т.д. 
+command_start="Готов выполнять команды. Вот их список:
+/start - вывод данного сообщения
+/uptime - время работы роутера
+/wan\_uptime - время работы WAN-интерфейса 
+/wan\_ip - белый IP-адрес
+/free - использование оперативной памяти
+/loadavg - средняя загрузка (1 мин., 5 мин., 15 мин.)
+/last - текущие сессии пользователей, вошедших по SSH
+/dhcp\_clients - список клиентов DHCP
+/wifi\_clients - список клиентов сетей WiFi
+/summary - вывод информации команд выше в одном сообщении
+"
+
+sleep 10
+
+## Сообщение при старте бота
+curl -k -s -X POST -H "Charset: UTF-8" $api/sendMessage -d chat_id=$chat_id -d parse_mode=Markdown --data-urlencode text="*Бот запущен*" &> $telegram_log_file
+
+## Клавиатура с функциональными кнопками, может быть возвращена с ответом бота, например, при запуске бота
+#keyboard='{"keyboard": [["/uptime","/wan_uptime"]], "keyboard": [["/wan_ip"]], "keyboard": [["/free","/loadavg","/last"]], "keyboard": [["/dhcp_clients","/wifi_clients"]], "keyboard": [["/summary"]],"resize_keyboard":true,"one_time_keyboard":false}'
+#curl -k -s -X POST -H "Charset: UTF-8" $api/sendMessage -d chat_id=$chat_id -d "reply_markup=${keyboard}" -d parse_mode=Markdown --data-urlencode text="*Бот запущен*" &> $telegram_log_file
+
+if [ -f "$offset_file" ] ; then
+	offset=$( cat $offset_file )
+else
+	offset=0
+	echo $offset > $offset_file
+fi
+
+reply_to_msg () {
+	local msg_id=$1
+	local origin=$2
+	eval local reply="$3"
+	curl -k -s -X POST -H "Charset: UTF-8" $api/sendMessage -d reply_to_message_id=$msg_id -d chat_id=$origin -d parse_mode=Markdown --data-urlencode text="$reply" &> $telegram_log_file
+}
+
+while [ true ]
+do
+	updates=$(curl -s -k -X GET $api/getUpdates?offset=$offset)
+	status=$(jsonfilter -s "$updates" -e '$.ok')
+	if [ $status = 'true' ]; then
+		update_ids=$(jsonfilter -s "$updates" -e '$.result[*].update_id')
+		for update_id in $update_ids
+		do
+			offset=$((update_id+1))
+			echo $offset > $offset_file
+			origin=$(jsonfilter -s "$updates"  -e '$.result[@.update_id='$update_id'].message.chat.id')
+			msg_id=$(jsonfilter -s "$updates"  -e '$.result[@.update_id='$update_id'].message.message_id')
+			command=$(jsonfilter -s "$updates" -e '$.result[@.update_id='$update_id'].message.text')
+			is_a_cmd=$(jsonfilter -s "$updates" -e '$.result[@.update_id='$update_id'].message.entities[*].type')
+			query_ans=$(jsonfilter -s "$updates" -e '$.result[@.update_id='$update_id'].callback_query.id')
+			origin_ans=$(jsonfilter -s "$updates"  -e '$.result[@.update_id='$update_id'].callback_query.message.chat.id')
+			if [[ "$origin" != "$chat_id" && "$origin_ans" != "$chat_id" ]];then
+				curl -k -s -X POST -H "Charset: UTF-8" $api/sendMessage -d reply_to_message_id=$msg_id -d chat_id=$origin -d parse_mode=Markdown --data-urlencode text="Это частный бот" &> $telegram_log_file
+				curl -k -s -X POST $api/leaveChat -d chat_id=$origin &> $telegram_log_file
+			else
+				if [ "$is_a_cmd" ==  "bot_command" ]; then
+					cmd=$(echo $command |  awk '{print $1}')
+					prms=$(echo $command | awk '{$1="";print $0}' | sed 's/^[ \t]*//g')
+					params=${prms//[\"\&\;\\\>\<\|]/}
+					DATE=`date +%d-%m-%Y_%H:%M:%S`
+					RETURN_TEXT=""
+					case "$cmd" in
+						("/start")
+							reply_to_msg $msg_id $origin "\${command_start}"
+							;;
+						(*)
+							if [ -f "${scripts}/${cmd}.sh" ] ; then
+								(echo "Call $cmd [$params]" | logger -t "telegram_bot" -p daemon.info)&
+								RETURN_TEXT=$(${scripts}/${cmd}.sh ${params})
+							else
+                                RETURN_TEXT="Команда *${cmd}* не найдена"
+							fi
+
+                            reply_to_msg $msg_id $origin "\${RETURN_TEXT}"
+							;;
+                    esac
+
+				else
+ 					reply_to_msg $msg_id $origin "\${command_not_found}"
+				fi
+
+			fi
+		done
+	fi
+	sleep $polling_period
+done&
