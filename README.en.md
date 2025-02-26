@@ -55,8 +55,17 @@ The bot's files should be placed in the corresponding folders of the device.
 * `/etc/config/tlgbot` - the configuration file. 
 > **Before its copying, you need to add the values of token and chatID there**
 * `/etc/init.d/tlgbot` - the file for procd managing of bot's start
-* `/usr/bin/tlgbot/` - the folder with set of scripts executing by bot
-* `/usr/sbin/tlgbot` - the main bot's script
+* `/usr/bin/tlgbot/` - the folder with set of additional scripts executing by bot
+* `/usr/sbin/tlgbot` - the main script
+
+After copying, you should configure file permissions.
+
+* `chmod 600 /etc/config/tlgbot`: the configuration file contains sensitive data, so it is recommended to restrict access to everyone except the owner.
+* `chmod +x /etc/init.d/tlgbot`: to be able to start/stop the service using `service`, Initscript file must be executable. 
+* `chmod +x /usr/sbin/tlgbot`: a permission to execute the main script.
+* `chmod +x -R /usr/bin/tlgbot/`: a permission to execute additional scripts from the set.
+
+> **By default,the files of the main script and additional scripts from the set are accessible by other users. If necessary, you can restrict access to these files yourself.**
 
 #### Starting
 
